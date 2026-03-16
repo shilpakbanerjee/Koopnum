@@ -1,0 +1,25 @@
+{
+  "algorithm": "cd_kernel_v001_baseline",
+  "order": 80,
+  "grid_size": 2048,
+  "regularization": 1e-06,
+  "center": true,
+  "normalize": true,
+  "taper": "none",
+  "references": [
+    {
+      "authors": "Milan Korda, Mihai Putinar, Igor Mezi\u0107",
+      "title": "Data-driven spectral analysis of the Koopman operator",
+      "venue": "Applied and Computational Harmonic Analysis 48(2), 599-629",
+      "year": 2020,
+      "doi_or_url": "10.1016/j.acha.2018.06.008"
+    },
+    {
+      "authors": "Hassan Arbabi, Igor Mezi\u0107",
+      "title": "Ergodic theory, dynamic mode decomposition, and computation of spectral properties of the Koopman operator",
+      "venue": "SIAM Journal on Applied Dynamical Systems 16(4), 2096-2126",
+      "year": 2017,
+      "doi_or_url": "10.1137/17M1125236"
+    }
+  ]
+}
