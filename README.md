@@ -1,4 +1,4 @@
-# koopman-toolkit
+# Koopnum
 
 A lightweight, PyCharm-ready Python project containing callable implementations of major Koopman-operator approximation algorithms discussed in our conversation.
 
@@ -85,3 +85,21 @@ python examples/demo.py
 ```bash
 pytest
 ```
+
+## AI Assistance Disclosure
+
+Portions of the project structure, scaffolding scripts, and initial prototype code
+(including experiment folder organization and baseline implementations for certain
+algorithms) were developed with assistance from OpenAI's ChatGPT.
+
+ChatGPT was used as a coding and structuring assistant to:
+- help design the repository layout
+- generate initial boilerplate for experiment scripts
+- suggest implementations of numerical methods for Koopman spectral analysis
+- assist with debugging and environment setup
+
+All mathematical design decisions, algorithmic experimentation, and validation of
+results are performed and verified by the repository author.
+
+Users of this repository should treat generated code as research prototypes and
+verify correctness and numerical stability for their specific applications.
