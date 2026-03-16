@@ -286,7 +286,7 @@ def evaluate_cd_kernel_from_toeplitz(
     christoffel = 1.0 / kernel_diag
 
     # Normalize the proxy into a density-like curve on [0, 2π)
-    integral = np.trapz(christoffel, angles)
+    integral = np.trapezoid(christoffel, angles)
     density_proxy = christoffel / integral if integral > 0 else christoffel
     return T, angles, z, kernel_diag, density_proxy
 

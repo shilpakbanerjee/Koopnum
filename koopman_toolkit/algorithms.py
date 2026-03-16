@@ -489,7 +489,7 @@ def moment_based_spectral_reconstruction(y: Array, max_lag: int = 50, grid_size:
     theta = np.linspace(0, 2 * np.pi, grid_size, endpoint=False)
     density = np.real(moments[0] + 2 * sum(moments[k] * np.exp(-1j * k * theta) for k in range(1, max_lag + 1)))
     density = np.maximum(density, 0.0)
-    norm = np.trapz(density, theta)
+    norm = np.trapezoid(density, theta)
     if norm > 0:
         density /= norm
     return SpectralEstimateResult(moments=moments, support_angles=theta, density=density, metadata={"max_lag": max_lag})
@@ -538,7 +538,7 @@ def christoffel_darboux_spectral_estimation(
         kappa = np.real(np.conj(v) @ Tinv @ v)
         kernel_values[idx] = kappa
         density[idx] = 1.0 / max(kappa, 1e-14)
-    norm = np.trapz(density, theta)
+    norm = np.trapezoid(density, theta)
     if norm > 0:
         density /= norm
     return SpectralEstimateResult(
