@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+koopman_toolkit/__init__.py
+koopman_toolkit/algorithms.py
+koopman_toolkit/references.py
+koopman_toolkit.egg-info/PKG-INFO
+koopman_toolkit.egg-info/SOURCES.txt
+koopman_toolkit.egg-info/dependency_links.txt
+koopman_toolkit.egg-info/requires.txt
+koopman_toolkit.egg-info/top_level.txt
+tests/test_basic.py
