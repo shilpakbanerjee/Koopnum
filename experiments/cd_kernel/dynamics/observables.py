@@ -132,3 +132,50 @@ def evaluate_observable(X: Array, observable: Observable | None = None) -> Array
     if values.ndim != 1 or values.shape[0] != X2.shape[0]:
         raise ValueError("Observable must return a 1D array of length len(trajectory)")
     return values
+
+
+def torus_fourier_mode(k1: int, k2: int) -> Observable:
+    """
+    Observable on the 2-torus:
+        f(x, y) = exp(2π i (k1 x + k2 y))
+
+    Here X is assumed to have shape (n, 2), with coordinates in [0,1)^2.
+    """
+    def obs(X: Array) -> Array:
+        X2 = _as_2d_trajectory(X)
+        if X2.shape[1] < 2:
+            raise ValueError("torus_fourier_mode requires a 2D torus trajectory")
+        phase = k1 * X2[:, 0] + k2 * X2[:, 1]
+        return np.exp(2j * np.pi * phase)
+
+    return obs
+
+
+def torus_cosine_mode(k1: int, k2: int) -> Observable:
+    """
+    Real cosine Fourier mode on the 2-torus:
+        f(x, y) = cos(2π (k1 x + k2 y))
+    """
+    def obs(X: Array) -> Array:
+        X2 = _as_2d_trajectory(X)
+        if X2.shape[1] < 2:
+            raise ValueError("torus_cosine_mode requires a 2D torus trajectory")
+        phase = k1 * X2[:, 0] + k2 * X2[:, 1]
+        return np.cos(2.0 * np.pi * phase).astype(np.complex128)
+
+    return obs
+
+
+def torus_sine_mode(k1: int, k2: int) -> Observable:
+    """
+    Real sine Fourier mode on the 2-torus:
+        f(x, y) = sin(2π (k1 x + k2 y))
+    """
+    def obs(X: Array) -> Array:
+        X2 = _as_2d_trajectory(X)
+        if X2.shape[1] < 2:
+            raise ValueError("torus_sine_mode requires a 2D torus trajectory")
+        phase = k1 * X2[:, 0] + k2 * X2[:, 1]
+        return np.sin(2.0 * np.pi * phase).astype(np.complex128)
+
+    return obs

@@ -2,15 +2,7 @@
 Generic runner for absolutely continuous measures on the unit circle.
 
 This script allows testing the CD-kernel reconstruction pipeline on a
-family of user-selectable absolutely continuous densities of the form
-
-    dμ(θ) = ρ(θ) dθ,   θ in [0, 2π),
-
-where ρ is specified by a named density constructor.
-
-It is intended to validate the measure-reconstruction layer independently
-of dynamics, and to study how well the CD-kernel method behaves for
-different smooth or sharply varying densities.
+family of user-selectable absolutely continuous densities on [0, 2π).
 
 Available example densities:
 - uniform
@@ -22,7 +14,8 @@ Available example densities:
 Outputs:
 - saved numerical reconstruction data
 - density comparison plots
-- printed peak information and diagnostics
+- error plots
+- kernel diagonal plots
 """
 
 from __future__ import annotations
@@ -39,6 +32,11 @@ from experiments.cd_kernel.measures.benchmark_measures import (
     wrapped_gaussian_density,
 )
 from experiments.cd_kernel.measures.reconstruction import evaluate_cd_kernel_from_moments
+from experiments.cd_kernel.runners.common_plotting import (
+    save_true_vs_reconstructed_density_plot,
+    save_kernel_comparison_plot,
+    save_error_plot,
+)
 
 
 Array = np.ndarray
@@ -59,10 +57,6 @@ def normalize_density_values(values: Array, angles: Array) -> Array:
 
 
 def shifted_cosine_density(alpha: float = 0.5, shift: float = 0.0) -> Callable[[Array], Array]:
-    """
-    Density proportional to 1 + alpha cos(theta - shift).
-    Must have |alpha| < 1 for nonnegativity.
-    """
     if abs(alpha) >= 1.0:
         raise ValueError("Need |alpha| < 1 for nonnegative density")
 
@@ -80,9 +74,6 @@ def double_bump_density(
     weight1: float = 0.55,
     weight2: float = 0.45,
 ) -> Callable[[Array], Array]:
-    """
-    Smooth two-bump density on the circle using wrapped Gaussians.
-    """
     if weight1 < 0 or weight2 < 0:
         raise ValueError("Weights must be nonnegative")
     if sigma1 <= 0 or sigma2 <= 0:
@@ -92,17 +83,12 @@ def double_bump_density(
     g2 = wrapped_gaussian_density(center2, sigma2)
 
     def rho(angles: Array) -> Array:
-        raw = weight1 * g1(angles) + weight2 * g2(angles)
-        return raw
+        return weight1 * g1(angles) + weight2 * g2(angles)
 
     return rho
 
 
 def get_density_registry() -> Dict[str, Callable[[], Callable[[Array], Array]]]:
-    """
-    Returns a dictionary of named density constructors.
-    Each value is a zero-argument callable returning a density function.
-    """
     return {
         "uniform": lambda: uniform_density,
         "cosine": lambda: cosine_density(alpha=0.6),
@@ -117,106 +103,6 @@ def get_density_registry() -> Dict[str, Callable[[], Callable[[Array], Array]]]:
         ),
         "wrapped_gaussian": lambda: wrapped_gaussian_density(center=2.0, sigma=0.35),
     }
-
-def plot_density_comparison(result, true_density, title, save_path):
-    fig, ax = plt.subplots(figsize=(10, 4.8))
-
-    ax.plot(result.angles, result.density_proxy, lw=1.6, label="CD density proxy")
-    ax.plot(result.angles, true_density, "--", lw=1.2, label="True density")
-
-    # Mark peaks
-    peaks = result.top_peaks(k=8, min_separation=12)
-    if peaks:
-        peak_angles = np.array([p["angle"] for p in peaks])
-        peak_vals = np.array([p["value"] for p in peaks])
-        ax.scatter(peak_angles, peak_vals, marker="x", label="Detected peaks")
-
-    ax.set_xlabel("Angle θ")
-    ax.set_ylabel("Density")
-    ax.set_title(title)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=160)
-    return fig
-
-
-def plot_kernel_diag(result, title, save_path):
-    fig, ax = plt.subplots(figsize=(10, 4.8))
-
-    ax.plot(result.angles, result.kernel_diag, lw=1.4)
-
-    ax.set_xlabel("Angle θ")
-    ax.set_ylabel("K_N(θ)")
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=160)
-    return fig
-
-
-def plot_error(result, true_density, title, save_path):
-    error = np.abs(result.density_proxy - true_density)
-
-    fig, ax = plt.subplots(figsize=(10, 4.8))
-    ax.plot(result.angles, error, lw=1.4)
-
-    ax.set_xlabel("Angle θ")
-    ax.set_ylabel("Absolute error")
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=160)
-    return fig
-
-
-def plot_unit_circle(result, true_density, title, save_path):
-    fig, ax = plt.subplots(figsize=(6, 6))
-
-    theta = result.angles
-    x = np.cos(theta)
-    y = np.sin(theta)
-
-    # normalize for visualization
-    density_scaled = result.density_proxy / np.max(result.density_proxy)
-
-    # plot circle
-    circle_theta = np.linspace(0, 2 * np.pi, 500)
-    ax.plot(np.cos(circle_theta), np.sin(circle_theta), linewidth=1.0)
-
-    # scatter with intensity
-    sc = ax.scatter(
-        x,
-        y,
-        c=density_scaled,
-        s=10,
-    )
-
-    # peaks
-    peaks = result.top_peaks(k=8, min_separation=12)
-    if peaks:
-        peak_angles = np.array([p["angle"] for p in peaks])
-        ax.scatter(
-            np.cos(peak_angles),
-            np.sin(peak_angles),
-            s=60,
-            marker="x",
-            label="Peaks",
-        )
-
-    ax.set_aspect("equal")
-    ax.set_title(title)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    fig.colorbar(sc, ax=ax, label="Normalized density")
-
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=160)
-    return fig
 
 
 def run_density_case(
@@ -272,33 +158,27 @@ def run_density_case(
         true_density=true_density,
     )
 
-    # --- Plotting ---
-
-    fig1 = plot_density_comparison(
-        result,
-        true_density,
+    fig1, _ = save_true_vs_reconstructed_density_plot(
+        angles=result.angles,
+        true_density=true_density,
+        reconstructed_density=result.density_proxy,
         title=f"Density comparison: {density_name}",
         save_path=plot_dir / f"{density_name}_density.png",
     )
 
-    fig2 = plot_kernel_diag(
-        result,
+    fig2, _ = save_kernel_comparison_plot(
+        results=[result],
+        labels=["Kernel diagonal"],
         title=f"Kernel diagonal: {density_name}",
         save_path=plot_dir / f"{density_name}_kernel_diag.png",
     )
 
-    fig3 = plot_error(
-        result,
-        true_density,
+    fig3, _ = save_error_plot(
+        angles=result.angles,
+        true_density=true_density,
+        reconstructed_density=result.density_proxy,
         title=f"Reconstruction error: {density_name}",
         save_path=plot_dir / f"{density_name}_error.png",
-    )
-
-    fig4 = plot_unit_circle(
-        result,
-        true_density,
-        title=f"Unit circle visualization: {density_name}",
-        save_path=plot_dir / f"{density_name}_unit_circle.png",
     )
 
     if show_plot:
@@ -307,14 +187,11 @@ def run_density_case(
         plt.close(fig1)
         plt.close(fig2)
         plt.close(fig3)
-        plt.close(fig4)
 
 
 def main():
-    # Pick one density here, or loop over all.
     density_registry = get_density_registry()
 
-    # Option 1: run all registered densities
     for density_name, density_factory in density_registry.items():
         density_fn = density_factory()
         run_density_case(
