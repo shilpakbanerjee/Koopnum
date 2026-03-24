@@ -2,9 +2,12 @@
 Compare CD-kernel reconstructions for several torus Fourier observables
 on the Arnold cat map.
 
-This runner is useful because Fourier modes are the natural observables
-on the torus and usually give cleaner spectral diagnostics than generic
-linear observables in the ambient coordinates.
+This runner uses the shared spectral-measure pipeline and compares
+baseline and tapered reconstructions for several torus Fourier modes.
+
+Fourier modes are the natural observables on the torus and usually give
+cleaner spectral diagnostics than generic linear observables in the
+ambient coordinates.
 """
 
 from __future__ import annotations
@@ -15,11 +18,17 @@ import matplotlib.pyplot as plt
 
 from experiments.cd_kernel.dynamics.systems import generate_cat_map
 from experiments.cd_kernel.dynamics.observables import torus_fourier_mode
-from experiments.cd_kernel.variants.cd_kernel_v001_baseline import fit_cd_kernel_baseline
-from experiments.cd_kernel.variants.cd_kernel_v002_tapered import fit_cd_kernel_tapered
+from experiments.cd_kernel.dynamics.spectral_measure import (
+    reconstruct_spectral_measure_from_system,
+)
+from experiments.cd_kernel.variants.cd_kernel_v002_tapered import (
+    fit_cd_kernel_tapered_from_moments,
+)
 from experiments.cd_kernel.runners.common_plotting import (
     save_density_comparison_plot,
     save_density_comparison_normalized_plot,
+    save_density_comparison_log_plot,
+    save_difference_plot,
 )
 
 
@@ -35,8 +44,6 @@ def main():
     grid_size = 2048
     regularization = 1e-6
 
-    X = generate_cat_map(n=n)
-
     modes = [
         (1, 0),
         (0, 1),
@@ -44,37 +51,49 @@ def main():
         (2, 1),
     ]
 
+    X = None
     baseline_results = {}
     tapered_results = {}
+    spectral_data = {}
 
     for k1, k2 in modes:
         obs = torus_fourier_mode(k1, k2)
 
-        baseline = fit_cd_kernel_baseline(
-            X,
+        X_mode, spec, baseline = reconstruct_spectral_measure_from_system(
+            system_fn=generate_cat_map,
+            system_kwargs={"n": n},
             order=order,
             observable=obs,
-            grid_size=grid_size,
-            regularization=regularization,
             center=True,
             normalize_moments=True,
+            taper=None,
+            grid_size=grid_size,
+            regularization=regularization,
             normalize_density=True,
         )
+        baseline.metadata["variant"] = "cd_kernel_v001_baseline"
 
-        tapered = fit_cd_kernel_tapered(
-            X,
+        tapered = fit_cd_kernel_tapered_from_moments(
+            moments=spec.moments,
             order=order,
-            observable=obs,
             grid_size=grid_size,
             regularization=regularization,
             taper="fejer",
-            center=True,
-            normalize_moments=True,
             normalize_density=True,
         )
+        tapered.metadata["variant"] = "cd_kernel_v002_tapered"
+        tapered.metadata["source"] = "trajectory"
+        tapered.metadata["system_name"] = "generate_cat_map"
+        tapered.metadata["system_kwargs"] = {"n": n}
+        tapered.metadata["observable_name"] = getattr(obs, "__name__", str(obs))
+        tapered.metadata["signal_length"] = len(spec.signal)
+
+        if X is None:
+            X = X_mode
 
         baseline_results[(k1, k2)] = baseline
         tapered_results[(k1, k2)] = tapered
+        spectral_data[(k1, k2)] = spec
 
         print(f"\n=== Cat map, mode ({k1},{k2}) ===")
         print("Baseline top peaks:")
@@ -87,6 +106,8 @@ def main():
 
         np.savez(
             OUTPUT_DIR / f"catmap_mode_{k1}_{k2}.npz",
+            signal=spec.signal,
+            moments=spec.moments,
             baseline_angles=baseline.angles,
             baseline_density=baseline.density_proxy,
             baseline_kernel=baseline.kernel_diag,
@@ -108,6 +129,13 @@ def main():
         save_path=PLOT_DIR / "catmap_fourier_modes_baseline.png",
     )
 
+    save_density_comparison_log_plot(
+        results=baseline_list,
+        labels=baseline_labels,
+        title="Cat map: baseline densities for torus Fourier modes (log scale)",
+        save_path=PLOT_DIR / "catmap_fourier_modes_baseline_log.png",
+    )
+
     # -----------------------------------------
     # Overlay tapered densities for all modes
     # -----------------------------------------
@@ -119,6 +147,13 @@ def main():
         labels=tapered_labels,
         title="Cat map: tapered CD densities for torus Fourier modes",
         save_path=PLOT_DIR / "catmap_fourier_modes_tapered.png",
+    )
+
+    save_density_comparison_log_plot(
+        results=tapered_list,
+        labels=tapered_labels,
+        title="Cat map: tapered densities for torus Fourier modes (log scale)",
+        save_path=PLOT_DIR / "catmap_fourier_modes_tapered_log.png",
     )
 
     # -----------------------------------------
@@ -142,8 +177,8 @@ def main():
         b = baseline_results[(k1, k2)]
         t = tapered_results[(k1, k2)]
 
-        ax.plot(b.angles, b.density_proxy, lw=1.2, label="Baseline")
-        ax.plot(t.angles, t.density_proxy, lw=1.2, label="Tapered")
+        ax.plot(b.angles, b.density_proxy, lw=1.2, alpha=0.85, label="Baseline")
+        ax.plot(t.angles, t.density_proxy, lw=1.2, alpha=0.90, linestyle="--", label="Tapered")
         ax.set_ylabel(f"Mode ({k1},{k2})")
         ax.grid(True, alpha=0.3)
 
@@ -152,6 +187,17 @@ def main():
     fig.suptitle("Cat map: baseline vs tapered by torus Fourier mode", y=0.995)
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "catmap_fourier_modes_compare.png", dpi=160)
+
+    # -----------------------------------------
+    # Per-mode absolute differences
+    # -----------------------------------------
+    for k1, k2 in modes:
+        save_difference_plot(
+            result_a=baseline_results[(k1, k2)],
+            result_b=tapered_results[(k1, k2)],
+            title=f"Cat map mode ({k1},{k2}): |baseline - tapered|",
+            save_path=PLOT_DIR / f"catmap_mode_{k1}_{k2}_difference.png",
+        )
 
     plt.show()
 

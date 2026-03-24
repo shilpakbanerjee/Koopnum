@@ -12,14 +12,20 @@ Provided helpers include:
 - kernel diagonal comparison plots
 - peak overlay plots
 - unit-circle peak visualization
+- true-vs-reconstructed plots
+- difference plots
 
-These helpers are intentionally lightweight and runner-oriented.
+These helpers support:
+- plotting order control
+- custom line styles
+- custom alpha
+- custom linewidth
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -42,6 +48,13 @@ def _angles_values_from_peaks(peaks):
     return angles, values
 
 
+def _default_styles(n: int):
+    return [
+        {"linestyle": "-", "alpha": 0.85, "linewidth": 1.6}
+        for _ in range(n)
+    ]
+
+
 def save_density_plot(
     result,
     title: str,
@@ -51,12 +64,22 @@ def save_density_plot(
     peak_k: int = 8,
     min_separation: int = 12,
     figsize: tuple[float, float] = (10, 4.8),
+    linestyle: str = "-",
+    alpha: float = 0.85,
+    linewidth: float = 1.6,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(result.angles, result.density_proxy, lw=1.5, label=label)
+    ax.plot(
+        result.angles,
+        result.density_proxy,
+        linestyle=linestyle,
+        alpha=alpha,
+        linewidth=linewidth,
+        label=label,
+    )
 
     if show_peaks:
         peaks = _extract_peaks(result, k=peak_k, min_separation=min_separation)
@@ -83,20 +106,31 @@ def save_density_comparison_plot(
     peak_k: int = 8,
     min_separation: int = 12,
     figsize: tuple[float, float] = (10, 4.8),
+    styles: Sequence[dict] | None = None,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
+    if styles is None:
+        styles = _default_styles(len(results))
+
     fig, ax = plt.subplots(figsize=figsize)
 
-    for result, label in zip(results, labels):
-        ax.plot(result.angles, result.density_proxy, lw=1.4, label=label)
+    for result, label, style in zip(results, labels, styles):
+        ax.plot(
+            result.angles,
+            result.density_proxy,
+            linestyle=style.get("linestyle", "-"),
+            alpha=style.get("alpha", 0.85),
+            linewidth=style.get("linewidth", 1.6),
+            label=label,
+        )
 
         if show_peaks:
             peaks = _extract_peaks(result, k=peak_k, min_separation=min_separation)
             pa, pv = _angles_values_from_peaks(peaks)
             if len(pa) > 0:
-                ax.scatter(pa, pv, marker="x")
+                ax.scatter(pa, pv, marker=style.get("peak_marker", "x"))
 
     ax.set_xlabel("Angle on unit circle")
     ax.set_ylabel("Density proxy")
@@ -115,15 +149,26 @@ def save_density_comparison_log_plot(
     save_path: str | Path,
     floor: float = 1e-16,
     figsize: tuple[float, float] = (10, 4.8),
+    styles: Sequence[dict] | None = None,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
+    if styles is None:
+        styles = _default_styles(len(results))
+
     fig, ax = plt.subplots(figsize=figsize)
 
-    for result, label in zip(results, labels):
+    for result, label, style in zip(results, labels, styles):
         y = np.maximum(np.asarray(result.density_proxy, dtype=float), floor)
-        ax.plot(result.angles, y, lw=1.3, label=label)
+        ax.plot(
+            result.angles,
+            y,
+            linestyle=style.get("linestyle", "-"),
+            alpha=style.get("alpha", 0.85),
+            linewidth=style.get("linewidth", 1.6),
+            label=label,
+        )
 
     ax.set_yscale("log")
     ax.set_xlabel("Angle on unit circle")
@@ -142,18 +187,29 @@ def save_density_comparison_normalized_plot(
     title: str,
     save_path: str | Path,
     figsize: tuple[float, float] = (10, 4.8),
+    styles: Sequence[dict] | None = None,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
+    if styles is None:
+        styles = _default_styles(len(results))
+
     fig, ax = plt.subplots(figsize=figsize)
 
-    for result, label in zip(results, labels):
+    for result, label, style in zip(results, labels, styles):
         y = np.asarray(result.density_proxy, dtype=float)
         ymax = np.max(y)
         if ymax > 0:
             y = y / ymax
-        ax.plot(result.angles, y, lw=1.3, label=label)
+        ax.plot(
+            result.angles,
+            y,
+            linestyle=style.get("linestyle", "-"),
+            alpha=style.get("alpha", 0.85),
+            linewidth=style.get("linewidth", 1.6),
+            label=label,
+        )
 
     ax.set_xlabel("Angle on unit circle")
     ax.set_ylabel("Normalized density")
@@ -171,14 +227,25 @@ def save_kernel_comparison_plot(
     title: str,
     save_path: str | Path,
     figsize: tuple[float, float] = (10, 4.8),
+    styles: Sequence[dict] | None = None,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
+    if styles is None:
+        styles = _default_styles(len(results))
+
     fig, ax = plt.subplots(figsize=figsize)
 
-    for result, label in zip(results, labels):
-        ax.plot(result.angles, result.kernel_diag, lw=1.3, label=label)
+    for result, label, style in zip(results, labels, styles):
+        ax.plot(
+            result.angles,
+            result.kernel_diag,
+            linestyle=style.get("linestyle", "-"),
+            alpha=style.get("alpha", 0.85),
+            linewidth=style.get("linewidth", 1.6),
+            label=label,
+        )
 
     ax.set_xlabel("Angle on unit circle")
     ax.set_ylabel("Kernel diagonal")
@@ -263,13 +330,34 @@ def save_true_vs_reconstructed_density_plot(
     reconstructed_label: str = "CD density proxy",
     true_label: str = "True density",
     figsize: tuple[float, float] = (10, 4.8),
+    reconstructed_style: dict | None = None,
+    true_style: dict | None = None,
 ):
     save_path = Path(save_path)
     _ensure_dir(save_path)
 
+    if reconstructed_style is None:
+        reconstructed_style = {"linestyle": "-", "alpha": 0.85, "linewidth": 1.6}
+    if true_style is None:
+        true_style = {"linestyle": "--", "alpha": 0.85, "linewidth": 1.4}
+
     fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(angles, reconstructed_density, lw=1.5, label=reconstructed_label)
-    ax.plot(angles, true_density, "--", lw=1.2, label=true_label)
+    ax.plot(
+        angles,
+        reconstructed_density,
+        linestyle=reconstructed_style.get("linestyle", "-"),
+        alpha=reconstructed_style.get("alpha", 0.85),
+        linewidth=reconstructed_style.get("linewidth", 1.6),
+        label=reconstructed_label,
+    )
+    ax.plot(
+        angles,
+        true_density,
+        linestyle=true_style.get("linestyle", "--"),
+        alpha=true_style.get("alpha", 0.85),
+        linewidth=true_style.get("linewidth", 1.4),
+        label=true_label,
+    )
     ax.set_xlabel("Angle on unit circle")
     ax.set_ylabel("Density")
     ax.set_title(title)
@@ -298,6 +386,42 @@ def save_error_plot(
     ax.set_xlabel("Angle on unit circle")
     ax.set_ylabel("Absolute error")
     ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=160)
+    return fig, ax
+
+
+def save_difference_plot(
+    result_a,
+    result_b,
+    title: str,
+    save_path: str | Path,
+    label: str = "|density A - density B|",
+    figsize: tuple[float, float] = (10, 4.8),
+):
+    """
+    Save a plot of the absolute difference between two reconstructed densities.
+
+    Assumes both results are defined on the same angular grid.
+    """
+    save_path = Path(save_path)
+    _ensure_dir(save_path)
+
+    if len(result_a.angles) != len(result_b.angles) or not np.allclose(result_a.angles, result_b.angles):
+        raise ValueError("Results must share the same angular grid for difference plotting")
+
+    diff = np.abs(
+        np.asarray(result_a.density_proxy, dtype=float)
+        - np.asarray(result_b.density_proxy, dtype=float)
+    )
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(result_a.angles, diff, linewidth=1.5, label=label)
+    ax.set_xlabel("Angle on unit circle")
+    ax.set_ylabel("Absolute difference")
+    ax.set_title(title)
+    ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     fig.savefig(save_path, dpi=160)
