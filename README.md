@@ -1,105 +1,185 @@
-# Koopnum
+# Koopnum  
+### Data-Driven Spectral Analysis of Koopman Operators
 
-A lightweight, PyCharm-ready Python project containing callable implementations of major Koopman-operator approximation algorithms discussed in our conversation.
+This repository implements a modular research framework for **data-driven spectral analysis of the Koopman operator**, with emphasis on:
 
-## Included algorithms
+- Spectral measure reconstruction from moments
+- Christoffel–Darboux (CD) kernel methods
+- Separation of **measure approximation** and **dynamical estimation**
+- Quantitative diagnostics, including **weak-convergence metrics**
 
-- `dmd` — Dynamic Mode Decomposition
-- `koopman_mode_decomposition` — DMD-based Koopman modes
-- `edmd` — Extended Dynamic Mode Decomposition
-- `kernel_edmd` — RBF-kernel EDMD
-- `sindy` — Sparse Identification of Nonlinear Dynamics
-- `hankel_dmd` — Hankel / delay-embedded DMD
-- `koopman_generator` — generator-based approximation in a lifted basis
-- `neural_koopman_pca` — lightweight PCA-based surrogate for neural Koopman models
-- `moment_based_spectral_reconstruction` — moment-based spectral density proxy
-- `christoffel_darboux_spectral_estimation` — simplified Christoffel-function spectral estimate
+The implementation is inspired by:
 
-## Important note
+> Korda, Putinar, Mezić  
+> *Data-driven spectral analysis of the Koopman operator*
 
-This project is designed to be **research-oriented and usable**, but not every algorithm here is a full production-grade implementation of the corresponding paper.
+---
 
-In particular:
-- `neural_koopman_pca` is a placeholder architecture meant to keep the API stable before swapping in a deep-learning backend.
-- `moment_based_spectral_reconstruction` and `christoffel_darboux_spectral_estimation` are practical approximations inspired by the literature, not full reproductions of all convergence machinery in the original papers.
+## 1. Conceptual Framework
 
-## Installation
+We explicitly separate two layers:
 
-Open the folder in PyCharm and create a virtual environment, then install:
+### (A) Measure Approximation (Deterministic)
+Given moments \( \{m_k\} \), reconstruct a measure on the unit circle:
+- Toeplitz moment matrices
+- Christoffel–Darboux kernel
+- Density proxy \( \rho_N(\theta) \)
+
+### (B) Dynamical Estimation (Data-driven)
+Given a dynamical system and observable:
+- Generate trajectory \( x_n \)
+- Form signal \( f_n = f(x_n) \)
+- Estimate moments via autocorrelation
+- Apply measure reconstruction
+
+This separation allows:
+- independent validation of numerical methods
+- controlled comparison (exact vs empirical)
+- clean debugging and experimentation
+
+---
+
+## 2. Mathematical Core
+
+### Christoffel–Darboux Kernel
+
+Given moments \( m_k \), form the Toeplitz matrix:
+\[
+T_{ij} = m_{i-j}
+\]
+
+Let:
+\[
+v(z) = (1, z, z^2, \dots, z^N)
+\]
+
+Then:
+\[
+K_N(z,z) = v(z)^* T^{-1} v(z)
+\]
+
+Density proxy:
+\[
+\rho_N(\theta) \approx \frac{1}{K_N(e^{i\theta}, e^{i\theta})}
+\]
+
+---
+
+### Tapering (Fejér-type regularization)
+
+To stabilize truncated moments:
+\[
+m_k^{(tapered)} = \left(1 - \frac{|k|}{N}\right) m_k
+\]
+
+This reduces oscillations and improves numerical conditioning.
+
+---
+
+### Weak-Convergence Viewpoint
+
+We evaluate convergence via continuous test functions:
+\[
+\int \varphi(\theta)\, d\mu(\theta)
+\]
+
+In practice:
+- Fourier modes \( e^{ik\theta} \)
+- Trigonometric functions \( \cos(k\theta), \sin(k\theta) \)
+
+This avoids misleading pointwise comparisons of densities.
+
+---
+
+## 3. Repository Structure
+
+experiments/cd_kernel/
+│
+├── core/                  # Numerical core
+├── measures/              # Measure-level experiments
+├── dynamics/              # Dynamical pipeline
+├── variants/              # Algorithm variants
+├── runners/               # Experiments
+├── plots/
+├── outputs/
+
+---
+
+## 4. Installation
+
+Python ≥ 3.10
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/shilpakbanerjee/Koopnum.git
+cd Koopnum
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install numpy matplotlib
+export PYTHONPATH=.
 ```
 
-Or install as a package:
+---
+
+## 5. Running Experiments
 
 ```bash
-pip install -e .
+python3 experiments/cd_kernel/runners/measures/run_measure_vs_empirical_rotation.py
+python3 experiments/cd_kernel/runners/dynamics/run_compare_rotation_variants.py
+python3 experiments/cd_kernel/runners/dynamics/run_compare_catmap_variants.py
+python3 experiments/cd_kernel/runners/convergence/run_rotation_exact_vs_empirical_convergence.py
+python3 experiments/cd_kernel/runners/convergence/run_catmap_variant_convergence.py
 ```
 
-## Quick start
+---
 
-```python
-import numpy as np
-from koopman_toolkit import dmd, default_polynomial_edmd
+## 6. Diagnostics
 
-# simple rotation data
-n = 400
-th = 0.1
-X = np.zeros((n, 2))
-X[0] = [1.0, 0.0]
-R = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-for k in range(n - 1):
-    X[k + 1] = R @ X[k]
+Shape:
+- L1 / L2 distance
+- entropy
+- flatness
+- total variation
+- peak mass
 
-res = dmd(X, rank=2)
-print(res.eigenvalues)
+Weak:
+- Fourier test discrepancy
+- trigonometric discrepancy
 
-edmd_res = default_polynomial_edmd(X, degree=2)
-print(edmd_res.eigenvalues[:5])
-```
+---
 
-## References in code
+## 7. References
 
-Each algorithm function carries structured metadata via the `algorithm_metadata` decorator.
+- Korda, Putinar, Mezić  
+  Data-driven spectral analysis of the Koopman operator
 
-Example:
+- Fejér summation
+- Blackman–Tukey spectral estimation
+- Thomson multitaper method
+- Harris (1978)
 
-```python
-from koopman_toolkit import dmd
-print(dmd.algorithm_metadata)
-```
+---
 
-This returns the algorithm name, bibliographic references, and a short note.
+## 8. Status
 
-## Example script
+- Baseline CD-kernel ✔
+- Tapered variant ✔
+- Weak convergence diagnostics ✔
+- Convergence runners ✔
 
-Run:
+---
 
-```bash
-python examples/demo.py
-```
+## 9. Acknowledgment
 
-## Tests
-
-```bash
-pytest
-```
-
-## AI Assistance Disclosure
-
-Portions of the project structure, scaffolding scripts, and initial prototype code
-(including experiment folder organization and baseline implementations for certain
-algorithms) were developed with assistance from OpenAI's ChatGPT.
+Portions of the project structure, scaffolding scripts, and initial prototype code (including experiment folder organization and baseline implementations for certain algorithms) were developed with assistance from OpenAI's ChatGPT.
 
 ChatGPT was used as a coding and structuring assistant to:
+
 - help design the repository layout
 - generate initial boilerplate for experiment scripts
 - suggest implementations of numerical methods for Koopman spectral analysis
 - assist with debugging and environment setup
+All mathematical design decisions, algorithmic experimentation, and validation of results are performed and verified by the repository author.
 
-All mathematical design decisions, algorithmic experimentation, and validation of
-results are performed and verified by the repository author.
-
-Users of this repository should treat generated code as research prototypes and
-verify correctness and numerical stability for their specific applications.
+Users of this repository should treat generated code as research prototypes and verify correctness and numerical stability for their specific applications.
