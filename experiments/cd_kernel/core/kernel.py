@@ -55,6 +55,23 @@ def density_proxy_from_kernel(kernel_diag: Array, floor: float = 1e-14) -> Array
     kernel_diag = np.asarray(kernel_diag, dtype=float)
     return 1.0 / np.maximum(kernel_diag, floor)
 
+def atomic_mass_proxy_from_kernel(kernel_diag: np.ndarray, order: int, floor: float = 1e-14) -> np.ndarray:
+    kernel_diag = np.asarray(kernel_diag, dtype=float)
+    invK = 1.0 / np.maximum(kernel_diag, floor)
+    raw = invK - 1.0 / (order + 1)
+    return np.maximum(raw, 0.0)
+
+def ac_density_proxy_from_kernel(kernel_diag: np.ndarray, order: int, floor: float = 1e-14) -> np.ndarray:
+    kernel_diag = np.asarray(kernel_diag, dtype=float)
+    invK = 1.0 / np.maximum(kernel_diag, floor)
+    raw = (order + 1) * invK - 1.0
+    return np.maximum(raw, 0.0)
+
+def modified_moments(moments: np.ndarray) -> np.ndarray:
+    moments = np.asarray(moments, dtype=np.complex128).copy()
+    moments[0] = moments[0] + 1.0
+    return moments
+
 
 def evaluate_cd_kernel_from_moments(
     moments: Array,
@@ -80,9 +97,12 @@ def evaluate_cd_kernel_from_moments(
         Whether to normalize the density proxy to unit integral.
     """
     moments = np.asarray(moments, dtype=np.complex128)
+    moments_mod = modified_moments(moments)
 
-    T = build_hermitian_toeplitz(moments, order=order)
+    T = build_hermitian_toeplitz(moments_mod, order=order)
     T = regularize_toeplitz(T, regularization)
+
+    order_used = T.shape[0] - 1
 
     angles, z, kernel_diag = christoffel_from_toeplitz(T, grid_size=grid_size)
     density_proxy = density_proxy_from_kernel(kernel_diag)
