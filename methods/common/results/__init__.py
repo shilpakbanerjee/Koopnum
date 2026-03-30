@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
-from experiments.cd_kernel.core.peaks import find_top_peaks
+from methods.cd_kernel.core.peaks import find_top_peaks
 
 Array = np.ndarray
 

@@ -30,35 +30,35 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.core.diagnostics import (
+from methods.cd_kernel.diagnostics.diagnostics import (
     summarize_result,
     compare_results,
     weak_convergence_summary,
 )
-from experiments.cd_kernel.dynamics.systems import (
+from methods.common.systems import (
     generate_planar_rotation,
     generate_cat_map,
 )
-from experiments.cd_kernel.dynamics.observables import (
+from methods.common.observables import (
     complex_coordinate,
     torus_fourier_mode,
 )
-from experiments.cd_kernel.dynamics.spectral_measure import (
+from methods.cd_kernel.dynamics.spectral_measure import (
     reconstruct_spectral_measure_from_system,
 )
-from experiments.cd_kernel.measures.cesaro import cesaro_density_from_moments
-from experiments.cd_kernel.measures.quadrature import (
+from methods.common.measures.cesaro import cesaro_density_from_moments
+from methods.common.measures.quadrature import (
     reconstruct_atomic_measure_from_moments,
     significant_atoms,
 )
-from experiments.cd_kernel.runners.common_plotting import (
+from methods.common.plotting.common_plotting import (
     save_density_comparison_plot,
     save_density_comparison_log_plot,
     save_density_comparison_normalized_plot,
     save_peak_overlay_plot,
     save_difference_plot,
 )
-from experiments.cd_kernel.core.peaks import find_top_peaks
+from methods.cd_kernel.core.peaks import find_top_peaks
 
 Array = np.ndarray
 

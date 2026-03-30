@@ -17,10 +17,10 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.dynamics.systems import generate_doubling_map
-from experiments.cd_kernel.dynamics.observables import cosine_of_coordinate
-from experiments.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
-from experiments.cd_kernel.measures.reconstruction import evaluate_cd_kernel_from_moments
+from methods.common.systems import generate_doubling_map
+from methods.common.observables import cosine_of_coordinate
+from methods.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
+from methods.cd_kernel.measure_reconstruction import evaluate_cd_kernel_from_moments
 
 
 OUTPUT_DIR = Path("experiments/cd_kernel/outputs/dynamics/doubling")

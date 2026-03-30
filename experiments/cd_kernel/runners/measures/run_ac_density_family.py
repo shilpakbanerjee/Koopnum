@@ -25,14 +25,14 @@ from typing import Callable, Dict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.measures.benchmark_measures import (
+from methods.common.measures.benchmark_measures import (
     AbsolutelyContinuousMeasure,
     uniform_density,
     cosine_density,
     wrapped_gaussian_density,
 )
-from experiments.cd_kernel.measures.reconstruction import evaluate_cd_kernel_from_moments
-from experiments.cd_kernel.runners.common_plotting import (
+from methods.cd_kernel.measure_reconstruction import evaluate_cd_kernel_from_moments
+from methods.common.plotting.common_plotting import (
     save_true_vs_reconstructed_density_plot,
     save_kernel_comparison_plot,
     save_error_plot,

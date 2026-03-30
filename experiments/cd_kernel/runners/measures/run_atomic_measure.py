@@ -15,8 +15,8 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.measures.benchmark_measures import AtomicMeasure
-from experiments.cd_kernel.measures.reconstruction import evaluate_cd_kernel_from_moments
+from methods.common.measures.benchmark_measures import AtomicMeasure
+from methods.cd_kernel.measure_reconstruction import evaluate_cd_kernel_from_moments
 
 
 OUTPUT_DIR = Path("experiments/cd_kernel/outputs/measures/atomic")

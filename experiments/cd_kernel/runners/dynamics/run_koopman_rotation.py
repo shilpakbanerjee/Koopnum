@@ -30,14 +30,14 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.dynamics.systems import generate_planar_rotation
-from experiments.cd_kernel.dynamics.observables import complex_coordinate
-from experiments.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
-from experiments.cd_kernel.core.kernel import (
+from methods.common.systems import generate_planar_rotation
+from methods.common.observables import complex_coordinate
+from methods.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
+from methods.cd_kernel.core.kernel import (
     evaluate_cd_kernel_from_moments,
     atomic_mass_proxy_from_kernel,
 )
-from experiments.cd_kernel.core.koopman import (
+from methods.cd_kernel.koopman.koopman import (
     koopman_matrix_from_moments,
     companion_koopman_from_moments,
     spectral_summary,

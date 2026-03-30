@@ -50,19 +50,19 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.measures.benchmark_measures import (
+from methods.common.measures.benchmark_measures import (
     AtomicMeasure,
     AbsolutelyContinuousMeasure,
     wrapped_gaussian_density,
 )
-from experiments.cd_kernel.measures.moments import normalize_moments
-from experiments.cd_kernel.measures.reconstruction import (
+from methods.common.moments import normalize_moments
+from methods.cd_kernel.measure_reconstruction import (
     evaluate_cd_kernel_from_moments,
 )
-from experiments.cd_kernel.measures.cesaro import (
+from methods.common.measures.cesaro import (
     cesaro_density_from_moments,
 )
-from experiments.cd_kernel.measures.quadrature import (
+from methods.common.measures.quadrature import (
     reconstruct_atomic_measure_from_moments,
     significant_atoms,
 )

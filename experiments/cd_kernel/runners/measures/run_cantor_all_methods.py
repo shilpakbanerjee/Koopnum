@@ -56,17 +56,17 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.measures.cantor_measure import (
+from methods.common.measures.cantor_measure import (
     cantor_measure_on_circle,
     moments_from_atomic,
 )
-from experiments.cd_kernel.measures.reconstruction import (
+from methods.cd_kernel.measure_reconstruction import (
     evaluate_cd_kernel_from_moments,
 )
-from experiments.cd_kernel.measures.cesaro import (
+from methods.common.measures.cesaro import (
     cesaro_density_from_moments,
 )
-from experiments.cd_kernel.measures.quadrature import (
+from methods.common.measures.quadrature import (
     reconstruct_atomic_measure_from_moments,
 )
 

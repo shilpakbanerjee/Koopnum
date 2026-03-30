@@ -26,17 +26,17 @@ from __future__ import annotations
 from typing import Callable, Optional
 import numpy as np
 
-from experiments.cd_kernel.core.result import CDKernelResult
-from experiments.cd_kernel.core.toeplitz import (
+from methods.common.results import CDKernelResult
+from methods.cd_kernel.core.toeplitz import (
     build_hermitian_toeplitz,
     regularize_toeplitz,
     condition_number,
 )
-from experiments.cd_kernel.core.normalization import (
+from methods.cd_kernel.core.normalization import (
     unit_circle_grid,
     normalize_density_proxy,
 )
-from experiments.cd_kernel.dynamics.spectral_measure import (
+from methods.cd_kernel.dynamics.spectral_measure import (
     spectral_measure_data_from_trajectory,
 )
 

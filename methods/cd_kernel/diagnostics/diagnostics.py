@@ -30,7 +30,7 @@ from __future__ import annotations
 from typing import Callable, Sequence
 import numpy as np
 
-from experiments.cd_kernel.core.normalization import circle_integral
+from methods.cd_kernel.core.normalization import circle_integral
 
 Array = np.ndarray
 TestFunction = Callable[[Array], Array]

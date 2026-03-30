@@ -8,20 +8,20 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from experiments.cd_kernel.core.diagnostics import (
+from methods.cd_kernel.diagnostics.diagnostics import (
     summarize_result,
     compare_results,
     weak_convergence_summary,
 )
-from experiments.cd_kernel.dynamics.systems import generate_cat_map
-from experiments.cd_kernel.dynamics.observables import torus_fourier_mode
-from experiments.cd_kernel.dynamics.spectral_measure import (
+from methods.common.systems import generate_cat_map
+from methods.common.observables import torus_fourier_mode
+from methods.cd_kernel.dynamics.spectral_measure import (
     reconstruct_spectral_measure_from_system,
 )
-from experiments.cd_kernel.variants.cd_kernel_v002_tapered import (
+from methods.cd_kernel.core.cd_kernel_v002_tapered import (
     fit_cd_kernel_tapered_from_moments,
 )
-from experiments.cd_kernel.runners.common_plotting import (
+from methods.common.plotting.common_plotting import (
     save_density_comparison_plot,
     save_density_comparison_log_plot,
     save_density_comparison_normalized_plot,

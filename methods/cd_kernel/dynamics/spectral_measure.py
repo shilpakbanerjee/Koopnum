@@ -25,13 +25,13 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Any
 import numpy as np
 
-from experiments.cd_kernel.dynamics.observables import evaluate_observable
-from experiments.cd_kernel.measures.moments import (
+from methods.common.observables import evaluate_observable
+from methods.common.moments import (
     estimate_moments_from_signal,
     hann_taper,
     hamming_taper,
 )
-from experiments.cd_kernel.core.kernel import evaluate_cd_kernel_from_moments
+from methods.cd_kernel.core.kernel import evaluate_cd_kernel_from_moments
 
 Array = np.ndarray
 Observable = Callable[[Array], Array]

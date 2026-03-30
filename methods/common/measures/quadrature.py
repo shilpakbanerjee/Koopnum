@@ -1,34 +1,22 @@
-"""
-Quadrature-style atomic weak reconstruction from moments.
-
-This module implements a practical version of the Section 4.2.2
-moment-matching quadrature approximation from Korda–Putinar–Mezić.
-
-We fix atom locations on a uniform angular grid and solve for
-nonnegative weights gamma_j such that
-
-    m_k ~= sum_j gamma_j exp(i k eta_j),   k = 0, ..., N
-
-in least-squares sense, subject to gamma_j >= 0.
-
-This yields a purely atomic approximation of the spectral measure.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 import numpy as np
 
 try:
-    from scipy.optimize import lsq_linear
+    from scipy.optimize import lsq_linear, nnls
 except Exception:  # pragma: no cover
     lsq_linear = None
+    nnls = None
 
 Array = np.ndarray
 
 
 @dataclass
 class QuadratureResult:
+    """
+    Atomic weak reconstruction result from moment matching on a fixed node grid.
+    """
     moments: Array
     order: int
     node_angles: Array
@@ -49,34 +37,113 @@ def _validate_moments(moments: Array, order: int | None = None) -> tuple[Array, 
     max_order = len(moments) - 1
     if order is None:
         order = max_order
+
     if order < 0 or order > max_order:
         raise ValueError(f"order must satisfy 0 <= order <= {max_order}")
 
     return moments, int(order)
 
 
-def uniform_quadrature_nodes(
-    num_nodes: int,
-) -> Array:
+def uniform_quadrature_nodes(num_nodes: int) -> Array:
     """
-    Uniform nodes eta_j in [0, 2pi), j = 0, ..., num_nodes-1.
+    Uniform nodes in [0, 2pi).
     """
     if num_nodes <= 0:
         raise ValueError("num_nodes must be positive")
     return np.linspace(0.0, 2.0 * np.pi, num_nodes, endpoint=False)
 
 
-def moment_matrix_from_nodes(
-    node_angles: Array,
-    order: int,
-) -> Array:
+def moment_matrix_from_nodes(node_angles: Array, order: int) -> Array:
     """
     Build A with entries
-        A[k, j] = exp(i k eta_j),   k = 0, ..., order.
+        A[k, j] = exp(i k theta_j),   k = 0, ..., order.
     """
     node_angles = np.asarray(node_angles, dtype=float)
     ks = np.arange(order + 1, dtype=int)[:, None]
     return np.exp(1j * ks * node_angles[None, :])
+
+
+def atomic_cdf(node_angles: Array, weights: Array) -> tuple[Array, Array]:
+    """
+    Right-continuous atomic CDF at sorted node locations.
+    """
+    node_angles = np.asarray(node_angles, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+
+    if node_angles.shape != weights.shape:
+        raise ValueError("node_angles and weights must have the same shape")
+
+    order = np.argsort(node_angles)
+    grid = node_angles[order]
+    w = weights[order]
+    cdf = np.cumsum(w)
+    return grid, cdf
+
+
+def _solve_nonnegative_least_squares(A: Array, b: Array) -> Array:
+    """
+    Solve min ||A x - b||_2 subject to x >= 0.
+
+    Strategy:
+    1. Column-scale the system.
+    2. Try BVLS.
+    3. Fall back to TRF.
+    4. Fall back to Lawson–Hanson NNLS.
+    """
+    A = np.asarray(A, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    if A.ndim != 2:
+        raise ValueError("A must be 2D")
+    if b.ndim != 1:
+        raise ValueError("b must be 1D")
+    if A.shape[0] != b.shape[0]:
+        raise ValueError("A and b have incompatible shapes")
+
+    col_norms = np.linalg.norm(A, axis=0)
+    col_norms = np.where(col_norms > 1e-14, col_norms, 1.0)
+    A_scaled = A / col_norms[None, :]
+
+    if lsq_linear is not None:
+        try:
+            sol = lsq_linear(
+                A_scaled,
+                b,
+                bounds=(0.0, np.inf),
+                method="bvls",
+                tol=1e-10,
+                max_iter=2000,
+                verbose=0,
+            )
+            if sol.success and sol.x is not None:
+                return np.asarray(sol.x, dtype=float) / col_norms
+        except Exception:
+            pass
+
+        try:
+            sol = lsq_linear(
+                A_scaled,
+                b,
+                bounds=(0.0, np.inf),
+                method="trf",
+                tol=1e-10,
+                lsmr_tol="auto",
+                max_iter=4000,
+                verbose=0,
+            )
+            if sol.success and sol.x is not None:
+                return np.asarray(sol.x, dtype=float) / col_norms
+        except Exception:
+            pass
+
+    if nnls is None:
+        raise RuntimeError(
+            "Could not solve nonnegative least squares: "
+            "lsq_linear failed and scipy.optimize.nnls is unavailable."
+        )
+
+    x_scaled, _ = nnls(A_scaled, b)
+    return np.asarray(x_scaled, dtype=float) / col_norms
 
 
 def reconstruct_atomic_measure_from_moments(
@@ -98,13 +165,13 @@ def reconstruct_atomic_measure_from_moments(
         Use moments up to order N.
     num_nodes:
         Number of uniform nodes if node_angles is not supplied.
-        A natural default is 10 * (order + 1), echoing the paper's practical setup.
+        Default: 10 * (order + 1)
     node_angles:
-        Optional explicit node locations in radians.
+        Optional explicit nodes in [0, 2pi).
     mass_constraint_weight:
-        Extra weight placed on the k=0 equation.
+        Extra weight for the mass equation.
     normalize_mass:
-        Renormalize the recovered weights to total mass Re(m_0).
+        Renormalize recovered weights to total mass Re(m_0).
 
     Returns
     -------
@@ -123,23 +190,17 @@ def reconstruct_atomic_measure_from_moments(
     A_complex = moment_matrix_from_nodes(node_angles, order=order)
     b_complex = moments[: order + 1]
 
-    # Convert complex system A gamma ~= b into real stacked system:
-    #
-    # [ Re A ] gamma ~= [ Re b ]
-    # [ Im A ]          [ Im b ]
-    #
     A_real = np.vstack([np.real(A_complex), np.imag(A_complex)])
     b_real = np.concatenate([np.real(b_complex), np.imag(b_complex)])
 
-    # Add an explicit mass row rather than just rescaling the first equation.
     if mass_constraint_weight > 0:
         mass_row = np.ones((1, num_nodes), dtype=float)
         mass_rhs = np.array([float(np.real(moments[0]))], dtype=float)
 
         A_real = np.vstack([A_real, mass_constraint_weight * mass_row])
         b_real = np.concatenate([b_real, mass_constraint_weight * mass_rhs])
-    gamma = _solve_nonnegative_least_squares(A_real, b_real)
 
+    gamma = _solve_nonnegative_least_squares(A_real, b_real)
     gamma = np.maximum(gamma, 0.0)
 
     total_mass_target = float(np.real(moments[0]))
@@ -175,31 +236,7 @@ def reconstruct_atomic_measure_from_moments(
     )
 
 
-def atomic_cdf(
-    node_angles: Array,
-    weights: Array,
-) -> tuple[Array, Array]:
-    """
-    Return the atomic CDF on sorted node locations.
-    """
-    node_angles = np.asarray(node_angles, dtype=float)
-    weights = np.asarray(weights, dtype=float)
-
-    if node_angles.shape != weights.shape:
-        raise ValueError("node_angles and weights must have the same shape")
-
-    order = np.argsort(node_angles)
-    grid = node_angles[order]
-    w = weights[order]
-    cdf = np.cumsum(w)
-
-    return grid, cdf
-
-
-def significant_atoms(
-    result: QuadratureResult,
-    tol: float = 1e-10,
-) -> list[dict]:
+def significant_atoms(result: QuadratureResult, tol: float = 1e-10) -> list[dict]:
     """
     Extract atoms with weights above tolerance.
     """
@@ -219,82 +256,3 @@ def significant_atoms(
         }
         for theta, w in zip(angles, weights)
     ]
-
-
-def _solve_nonnegative_least_squares(A: Array, b: Array) -> Array:
-    """
-    Solve min ||A x - b||_2 subject to x >= 0.
-
-    Strategy:
-    1. Column-scale the system to reduce conditioning issues.
-    2. Try scipy.optimize.lsq_linear with method='bvls' (often more robust than TRF
-       for dense bounded least squares of moderate size).
-    3. Fall back to scipy.optimize.nnls if needed.
-
-    Returns
-    -------
-    x : ndarray
-        Nonnegative solution vector.
-    """
-    A = np.asarray(A, dtype=float)
-    b = np.asarray(b, dtype=float)
-
-    if A.ndim != 2:
-        raise ValueError("A must be 2D")
-    if b.ndim != 1:
-        raise ValueError("b must be 1D")
-    if A.shape[0] != b.shape[0]:
-        raise ValueError("A and b have incompatible shapes")
-
-    # Column scaling: solve A D^{-1} y ~= b, x = D^{-1} y
-    col_norms = np.linalg.norm(A, axis=0)
-    col_norms = np.where(col_norms > 1e-14, col_norms, 1.0)
-    A_scaled = A / col_norms[None, :]
-
-    # Try bounded-variable least squares first.
-    if lsq_linear is not None:
-        try:
-            sol = lsq_linear(
-                A_scaled,
-                b,
-                bounds=(0.0, np.inf),
-                method="bvls",
-                tol=1e-10,
-                max_iter=2000,
-                verbose=0,
-            )
-            if sol.success and sol.x is not None:
-                x_scaled = np.asarray(sol.x, dtype=float)
-                return x_scaled / col_norms
-        except Exception:
-            pass
-
-        # Secondary attempt with TRF, but looser tolerances / more iterations.
-        try:
-            sol = lsq_linear(
-                A_scaled,
-                b,
-                bounds=(0.0, np.inf),
-                method="trf",
-                tol=1e-10,
-                lsmr_tol="auto",
-                max_iter=4000,
-                verbose=0,
-            )
-            if sol.success and sol.x is not None:
-                x_scaled = np.asarray(sol.x, dtype=float)
-                return x_scaled / col_norms
-        except Exception:
-            pass
-
-    # Fallback: Lawson–Hanson NNLS
-    try:
-        from scipy.optimize import nnls
-    except Exception as exc:
-        raise RuntimeError(
-            "Could not solve nonnegative least squares: "
-            "lsq_linear failed and scipy.optimize.nnls is unavailable."
-        ) from exc
-
-    x_scaled, _ = nnls(A_scaled, b)
-    return np.asarray(x_scaled, dtype=float) / col_norms

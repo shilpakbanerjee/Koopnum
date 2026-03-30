@@ -19,8 +19,8 @@ from __future__ import annotations
 from typing import Callable, Optional
 import numpy as np
 
-from experiments.cd_kernel.core.kernel import evaluate_cd_kernel_from_moments
-from experiments.cd_kernel.dynamics.spectral_measure import (
+from methods.cd_kernel.core.kernel import evaluate_cd_kernel_from_moments
+from methods.cd_kernel.dynamics.spectral_measure import (
     spectral_measure_data_from_trajectory,
 )
 
