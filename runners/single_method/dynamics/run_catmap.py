@@ -18,9 +18,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from methods.common.systems import generate_cat_map
-from methods.common.observables import linear_observable
+from methods.common.observables import torus_fourier_mode
 from methods.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
-from methods.cd_kernel.measure_reconstruction import evaluate_cd_kernel_from_moments
+from methods.cd_kernel.api import evaluate_cd_kernel_from_moments
 
 
 OUTPUT_DIR = Path("experiments/cd_kernel/outputs/dynamics/catmap")
@@ -29,7 +29,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 PLOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def main():
+def main() -> None:
     n = 5000
     order = 80
     grid_size = 2048
@@ -37,8 +37,9 @@ def main():
 
     X = generate_cat_map(n=n)
 
-    # A simple nontrivial linear observable on the torus coordinates.
-    observable = linear_observable([1.0 + 0.0j, 0.5 + 0.0j])
+    # Simple Fourier observable on the torus.
+    # This is a natural benchmark observable for the cat map.
+    observable = torus_fourier_mode(1, 0)
 
     spec = spectral_measure_data_from_trajectory(
         X,
@@ -58,6 +59,8 @@ def main():
 
     print("=== Arnold cat map test ===")
     print("n =", n)
+    print("order =", order)
+    print("grid_size =", grid_size)
     print("Condition number:", result.metadata["toeplitz_condition_number"])
     print("Top peaks:")
     for item in result.top_peaks(k=10, min_separation=12):

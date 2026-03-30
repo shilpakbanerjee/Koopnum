@@ -33,11 +33,9 @@ import matplotlib.pyplot as plt
 from methods.common.systems import generate_planar_rotation
 from methods.common.observables import complex_coordinate
 from methods.cd_kernel.dynamics.spectral_measure import spectral_measure_data_from_trajectory
-from methods.cd_kernel.core.kernel import (
+from methods.cd_kernel.api import (
     evaluate_cd_kernel_from_moments,
     atomic_mass_proxy_from_kernel,
-)
-from methods.cd_kernel.koopman.koopman import (
     koopman_matrix_from_moments,
     companion_koopman_from_moments,
     spectral_summary,

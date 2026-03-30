@@ -56,15 +56,11 @@ from methods.common.measures.benchmark_measures import (
     wrapped_gaussian_density,
 )
 from methods.common.moments import normalize_moments
-from methods.cd_kernel.measure_reconstruction import (
-    evaluate_cd_kernel_from_moments,
-)
-from methods.common.measures.cesaro import (
-    cesaro_density_from_moments,
-)
 from methods.common.measures.quadrature import (
-    reconstruct_atomic_measure_from_moments,
     significant_atoms,
+)
+from methods.cd_kernel.measure_api import (
+    run_all_measure_methods_from_moments,
 )
 
 Array = np.ndarray
@@ -406,29 +402,21 @@ def main() -> None:
     # -------------------------------------------------------------
     # Three reconstructions from the same moment data
     # -------------------------------------------------------------
-    cd_result = evaluate_cd_kernel_from_moments(
+    results = run_all_measure_methods_from_moments(
         moments,
         order=ORDER,
         grid_size=GRID_SIZE,
-        regularization=REGULARIZATION,
-        normalize_density=True,
+        cd_normalize_density=True,
+        cesaro_clip_negative=True,
+        cesaro_normalize_mass=True,
+        quadrature_nodes=QUADRATURE_NODE_MULTIPLIER * (ORDER + 1),
+        quadrature_mass_constraint_weight=QUADRATURE_MASS_CONSTRAINT_WEIGHT,
+        quadrature_normalize_mass=True,
     )
 
-    cesaro_result = cesaro_density_from_moments(
-        moments,
-        order=ORDER,
-        grid_size=GRID_SIZE,
-        clip_negative=True,
-        normalize_mass=True,
-    )
-
-    quad_result = reconstruct_atomic_measure_from_moments(
-        moments,
-        order=ORDER,
-        num_nodes=QUADRATURE_NODE_MULTIPLIER * (ORDER + 1),
-        mass_constraint_weight=QUADRATURE_MASS_CONSTRAINT_WEIGHT,
-        normalize_mass=True,
-    )
+    cd_result = results["cd"]
+    cesaro_result = results["cesaro"]
+    quad_result = results["quadrature"]
 
     # -------------------------------------------------------------
     # Exact benchmark references on the same grid
