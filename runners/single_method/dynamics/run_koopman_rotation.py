@@ -45,7 +45,7 @@ from methods.cd_kernel.api import (
 # Configuration
 # ---------------------------------------------------------------------
 
-OBSERVABLE_MODE = "eigenfunction"   # "eigenfunction" or "rich"
+OBSERVABLE_MODE = "rich"   # "eigenfunction" or "rich"
 
 N_TRAJ = 3000
 ROTATION_ANGLE = 0.35
