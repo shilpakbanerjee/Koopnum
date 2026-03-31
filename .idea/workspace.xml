@@ -4,7 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="22a46d74-3fba-488a-b8ab-c52a116f490d" name="Changes" comment="" />
+    <list default="true" id="22a46d74-3fba-488a-b8ab-c52a116f490d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/export" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/koopman_toolkit/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/koopman_toolkit/algorithms.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/koopman_toolkit/references.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/methods/cd_kernel/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/methods/cd_kernel/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/methods/cd_kernel/measure_api.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/my_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runners/single_method/measures/run_cantor_all_methods.py" beforeDir="false" afterPath="$PROJECT_DIR$/runners/single_method/measures/run_cantor_all_methods.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/runners/single_method/measures/run_mixed_measure_all_methods.py" beforeDir="false" afterPath="$PROJECT_DIR$/runners/single_method/measures/run_mixed_measure_all_methods.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -32,29 +43,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/shilpak/PycharmProjects/Koopnum&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "/home/shilpak/PycharmProjects/Koopnum",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/experiments/cd_kernel/runners/measures" />
@@ -85,7 +98,8 @@
       <workItem from="1774267995373" duration="68000" />
       <workItem from="1774332078852" duration="11920000" />
       <workItem from="1774412555831" duration="10953000" />
-      <workItem from="1774859002790" duration="9802000" />
+      <workItem from="1774859002790" duration="9843000" />
+      <workItem from="1774931238919" duration="1242000" />
     </task>
     <servers />
   </component>

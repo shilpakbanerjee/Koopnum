@@ -59,7 +59,7 @@ from methods.common.moments import normalize_moments
 from methods.common.measures.quadrature import (
     significant_atoms,
 )
-from methods.cd_kernel.measure_api import (
+from methods.cd_kernel.api import (
     run_all_measure_methods_from_moments,
 )
 

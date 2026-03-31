@@ -60,7 +60,7 @@ from methods.common.measures.cantor_measure import (
     cantor_measure_on_circle,
     moments_from_atomic,
 )
-from methods.cd_kernel.measure_api import (
+from methods.cd_kernel.api import (
     run_all_measure_methods_from_moments,
 )
 
