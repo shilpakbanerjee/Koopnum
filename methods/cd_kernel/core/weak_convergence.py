@@ -203,6 +203,8 @@ def compare_rotation_measures_weakly(
 
     rows: list[dict] = []
 
+    original_harmonic_count = int(len(np.asarray(harmonics)))
+
     for p, q in approximants:
         alpha_n = float(p) / float(q)
         mu_n = build_rotation_measure(
@@ -218,6 +220,8 @@ def compare_rotation_measures_weakly(
             "alpha_error": abs(alpha_n - float(target_alpha)),
             "num_atoms": int(len(mu_n.angles)),
         }
+
+        row.update(collapse_metrics(mu_n, num_original_harmonics=original_harmonic_count))
 
         # Raw atom info for quick inspection
         for j, (ang, wt) in enumerate(zip(mu_n.angles, mu_n.weights), start=1):
@@ -258,3 +262,106 @@ def smoothed_density_on_grid(
         y += float(wt) * np.exp(-(d ** 2) / (2.0 * sigma ** 2))
 
     return y
+
+
+def spectral_entropy(weights: np.ndarray, eps: float = 1e-15) -> float:
+    """Return Shannon entropy of normalized atom weights.
+
+    If w = (w_1,...,w_r) with sum w_i = 1, then
+        H(w) = -sum_i w_i log w_i.
+
+    Interpretation:
+    - H = 0 for complete concentration on one atom
+    - H = log(r) for r equal-mass atoms
+    """
+    w = np.asarray(weights, dtype=float)
+    total = float(np.sum(w))
+    if total <= 0.0:
+        raise ValueError("weights must have positive total mass")
+    w = w / total
+    w_safe = np.clip(w, eps, None)
+    return float(-np.sum(w * np.log(w_safe)))
+
+
+def effective_atom_count(weights: np.ndarray, eps: float = 1e-15) -> float:
+    """Return exp(entropy), interpreted as effective number of active atoms."""
+    return float(np.exp(spectral_entropy(weights, eps=eps)))
+
+
+def sorted_weights_desc(weights: np.ndarray) -> np.ndarray:
+    """Return normalized weights in descending order."""
+    w = np.asarray(weights, dtype=float)
+    total = float(np.sum(w))
+    if total <= 0.0:
+        raise ValueError("weights must have positive total mass")
+    w = w / total
+    return np.sort(w)[::-1]
+
+
+def top_mass_fraction(weights: np.ndarray, top_k: int = 1) -> float:
+    """Mass carried by the largest top_k atoms."""
+    if top_k <= 0:
+        raise ValueError("top_k must be positive")
+    w = sorted_weights_desc(weights)
+    return float(np.sum(w[:top_k]))
+
+
+def concentration_ratio(weights: np.ndarray) -> float:
+    """Largest weight divided by second-largest weight.
+
+    Returns +inf if there is only one atom or the second-largest weight is 0.
+    """
+    w = sorted_weights_desc(weights)
+    if len(w) == 0:
+        raise ValueError("weights must not be empty")
+    if len(w) == 1:
+        return float("inf")
+    if w[1] <= 1e-15:
+        return float("inf")
+    return float(w[0] / w[1])
+
+
+def collision_count(num_original_harmonics: int, num_atoms_after_merge: int) -> int:
+    """How many original harmonic contributions were merged away."""
+    return int(num_original_harmonics) - int(num_atoms_after_merge)
+
+
+def collapse_metrics(measure, num_original_harmonics: int) -> dict:
+    """Return interpretable metrics for spectral collapse.
+
+    Parameters
+    ----------
+    measure:
+        AtomicMeasureOnCircle with fields `angles` and `weights`.
+    num_original_harmonics:
+        Number of harmonic terms in the original observable before merging.
+
+    Returns
+    -------
+    dict
+        Contains:
+        - num_atoms
+        - collision_count
+        - spectral_entropy
+        - effective_atom_count
+        - top_1_mass
+        - top_2_mass
+        - concentration_ratio
+    """
+    w = np.asarray(measure.weights, dtype=float)
+    total = float(np.sum(w))
+    if total <= 0.0:
+        raise ValueError("measure must have positive total mass")
+    w = w / total
+
+    num_atoms = int(len(w))
+
+    return {
+        "num_atoms": num_atoms,
+        "collision_count": collision_count(num_original_harmonics, num_atoms),
+        "spectral_entropy": spectral_entropy(w),
+        "effective_atom_count": effective_atom_count(w),
+        "top_1_mass": top_mass_fraction(w, top_k=1),
+        "top_2_mass": top_mass_fraction(w, top_k=min(2, num_atoms)),
+        "concentration_ratio": concentration_ratio(w),
+    }

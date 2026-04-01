@@ -135,7 +135,7 @@ def build_observable(cfg: RotationRunConfig, resolved: ResolvedRotationConfig) -
         expected_angles = [float((2.0 * np.pi * harmonics[0] * alpha) % (2.0 * np.pi))]
         return ObservableSpec(
             func=_circle_observable_from_harmonics(harmonics, coeffs),
-            description=f"exp(2π i {harmonics[0]} x)",
+            description=rf"f(x)=e^{{2\pi i\,{harmonics[0]}x}}",
             expectation="single atom at the selected circle-rotation eigenangle",
             slug="eigenfunction",
             expected_angles=expected_angles,
@@ -155,7 +155,7 @@ def build_observable(cfg: RotationRunConfig, resolved: ResolvedRotationConfig) -
         )
         return ObservableSpec(
             func=_circle_observable_from_harmonics(harmonics, coeffs),
-            description="exp(2π i x) + 0.35 exp(2π i 2x) + 0.15 exp(2π i 3x)",
+            description=r"f(x)=e^{2\pi i x}+0.35\,e^{4\pi i x}+0.15\,e^{6\pi i x}",
             expectation=expectation,
             slug="rich",
             expected_angles=expected_angles,

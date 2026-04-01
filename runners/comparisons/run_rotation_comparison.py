@@ -39,6 +39,124 @@ class RotationComparisonConfig:
     save_csv: bool = True
 
 
+# ---------------------------------------------------------------------
+# Formatting / labels
+# ---------------------------------------------------------------------
+
+def _alpha_display(target_alpha: float, alpha_name: str | None = None) -> str:
+    if alpha_name == "golden_conjugate":
+        return rf"$\alpha=\frac{{\sqrt{{5}}-1}}{{2}}\approx {target_alpha:.6f}$"
+    if alpha_name == "sqrt2_minus_1":
+        return rf"$\alpha=\sqrt{{2}}-1\approx {target_alpha:.6f}$"
+    if alpha_name == "sqrt3_minus_1":
+        return rf"$\alpha=\sqrt{{3}}-1\approx {target_alpha:.6f}$"
+    return rf"$\alpha\approx {target_alpha:.6f}$"
+
+
+def _approximant_label(result) -> str:
+    if getattr(result.config, "p", None) is not None and getattr(result.config, "q", None) is not None:
+        return f"approximant {result.config.p}/{result.config.q}"
+    return "irrational target"
+
+
+def _test_function_pretty_name(key: str) -> str:
+    mapping = {
+        "test_bump_atom_1_abs_error": "bump at atom 1",
+        "test_bump_atom_2_abs_error": "bump at atom 2",
+        "test_bump_atom_3_abs_error": "bump at atom 3",
+        "test_bump_pi_abs_error": "bump at π",
+        "test_cos_1_abs_error": "cos(θ)",
+        "test_cos_2_abs_error": "cos(2θ)",
+        "test_cos_3_abs_error": "cos(3θ)",
+        "test_sin_1_abs_error": "sin(θ)",
+        "test_sin_2_abs_error": "sin(2θ)",
+        "test_sin_3_abs_error": "sin(3θ)",
+    }
+    return mapping.get(key, key)
+
+
+def _moment_pretty_name(key: str) -> str:
+    parts = key.split("_")
+    if len(parts) >= 2:
+        k = parts[1]
+        return rf"$|m_{{{k}}}^{{(p/q)}}-m_{{{k}}}^{{(\alpha)}}|$"
+    return key
+
+
+def _header_lines(
+    title: str,
+    target_alpha: float | None = None,
+    observable_desc: str | None = None,
+    alpha_name: str | None = None,
+    extra_lines: list[str] | None = None,
+) -> list[str]:
+    lines = [title]
+    if target_alpha is not None:
+        lines.append("target rotation: " + _alpha_display(target_alpha, alpha_name=alpha_name))
+    if observable_desc is not None:
+        lines.append(rf"observable: ${observable_desc}$")
+    if extra_lines:
+        lines.extend(extra_lines)
+    return lines
+
+
+def _apply_figure_header(
+    fig,
+    ax,
+    title: str,
+    target_alpha: float | None = None,
+    observable_desc: str | None = None,
+    alpha_name: str | None = None,
+    extra_lines: list[str] | None = None,
+) -> None:
+    """
+    Draw a clean multi-line header with explicit vertical spacing.
+
+    Layout strategy:
+    - all header text is figure-level
+    - smaller fonts than before
+    - axes top is computed from number of lines
+    - no bbox_inches='tight' when saving
+    """
+    lines = _header_lines(
+        title=title,
+        target_alpha=target_alpha,
+        observable_desc=observable_desc,
+        alpha_name=alpha_name,
+        extra_lines=extra_lines,
+    )
+
+    title_fs = 18
+    meta_fs = 11
+
+    # Vertical positions in figure coordinates
+    y_top = 0.972
+    dy = 0.045
+
+    for i, line in enumerate(lines):
+        y = y_top - i * dy
+        fig.text(
+            0.5,
+            y,
+            line,
+            ha="center",
+            va="top",
+            fontsize=(title_fs if i == 0 else meta_fs),
+        )
+
+    # Compute top of axes from number of header lines.
+    # More lines => slightly lower axes, but without huge empty gap.
+    n = len(lines)
+    top = 0.88 - n * 0.045
+    top = max(0.72, min(0.80, top))
+
+    fig.subplots_adjust(left=0.10, right=0.97, bottom=0.12, top=top)
+
+
+# ---------------------------------------------------------------------
+# Generic helpers
+# ---------------------------------------------------------------------
+
 def _circular_distance(a: float, b: float) -> float:
     d = abs(a - b) % (2.0 * np.pi)
     return min(d, 2.0 * np.pi - d)
@@ -106,12 +224,9 @@ def _build_direct_irrational_cfg(base: RotationRunConfig) -> RotationRunConfig:
 
 
 def _write_summary_csv(path, rows):
-    import csv
-
     if not rows:
         return
 
-    # collect all keys across rows (important: rows may have different keys)
     all_keys = set()
     for row in rows:
         all_keys.update(row.keys())
@@ -120,11 +235,8 @@ def _write_summary_csv(path, rows):
 
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
-
         writer.writeheader()
-
         for row in rows:
-            # fill missing keys with None
             full_row = {k: row.get(k, None) for k in fieldnames}
             writer.writerow(full_row)
 
@@ -140,10 +252,15 @@ def _summary_row(result: Any, label: str, alpha_target: float | None = None) -> 
         "observable_mode": result.config.observable_mode,
         "alpha_effective": getattr(result.resolved, "alpha_effective", np.nan),
         "theta_effective": getattr(result.resolved, "theta_effective", np.nan),
-        "toeplitz_condition_number": result.cd_result.metadata.get("gram_condition_number", np.nan),
+        "toeplitz_condition_number": result.cd_result.metadata.get("toeplitz_condition_number", np.nan),
         "top_peak_angle": top_peak_angle,
         "top_peak_value": top_peak_value,
     }
+
+    if getattr(result.config, "p", None) is not None:
+        row["p"] = int(result.config.p)
+    if getattr(result.config, "q", None) is not None:
+        row["q"] = int(result.config.q)
 
     if alpha_target is not None and getattr(result.resolved, "alpha_effective", None) is not None:
         row["alpha_error"] = abs(float(result.resolved.alpha_effective) - float(alpha_target))
@@ -158,57 +275,267 @@ def _summary_row(result: Any, label: str, alpha_target: float | None = None) -> 
     return row
 
 
-def _plot_atomic_overlay(results: list[Any], outdir: Path, filename: str, title: str) -> str:
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_subplot(111)
+# ---------------------------------------------------------------------
+# Plot helpers
+# ---------------------------------------------------------------------
+
+def _plot_atomic_overlay(results, outdir, filename, title, target_alpha, observable_desc, alpha_name=None):
+    fig, ax = plt.subplots(figsize=(10.8, 6.0))
 
     for result in results:
         angles = np.asarray(result.cd_result.angles, dtype=float)
         atomic_proxy = np.asarray(result.atomic_proxy, dtype=float)
-        label = result.config.run_name or "run"
-        ax.plot(angles, atomic_proxy, linewidth=1.4, label=label)
+        ax.plot(angles, atomic_proxy, linewidth=1.6, label=_approximant_label(result))
 
-    ax.set_xlabel("angle")
-    ax.set_ylabel("atomic proxy")
-    ax.set_title(title)
-    ax.legend(loc="best", fontsize=8)
-    fig.tight_layout()
+    ax.set_xlabel("angle on unit circle (radians)")
+    ax.set_ylabel("atomic spectral proxy")
+    ax.legend(loc="best", fontsize=10, frameon=True)
+
+    _apply_figure_header(fig, ax, title, target_alpha, observable_desc, alpha_name=alpha_name)
 
     path = outdir / filename
-    fig.savefig(path, dpi=180, bbox_inches="tight")
+    fig.savefig(path, dpi=220)
     plt.close(fig)
     return str(path)
 
 
-def _plot_condition_vs_denominator(rows: list[dict[str, Any]], outdir: Path, filename: str) -> str:
-    xs = []
-    ys = []
-    for row in rows:
-        label = str(row["label"])
-        if "/" in label:
-            try:
-                q = int(label.split("/")[1])
-                xs.append(q)
-                ys.append(float(row["toeplitz_condition_number"]))
-            except Exception:
-                pass
+def _plot_condition_vs_denominator(rows, outdir, filename, target_alpha=None, observable_desc=None, alpha_name=None):
+    pairs = []
 
-    if not xs:
+    for row in rows:
+        if "q" not in row or "toeplitz_condition_number" not in row:
+            continue
+        try:
+            q_val = int(row["q"])
+            cond_val = float(row["toeplitz_condition_number"])
+        except Exception:
+            continue
+        if np.isfinite(q_val) and np.isfinite(cond_val):
+            pairs.append((q_val, cond_val))
+
+    if not pairs:
         return ""
 
-    fig = plt.figure(figsize=(8, 4.5))
-    ax = fig.add_subplot(111)
-    ax.plot(xs, ys, marker="o")
-    ax.set_xlabel("denominator q")
-    ax.set_ylabel("toeplitz condition number")
-    ax.set_title("Condition number vs denominator")
-    fig.tight_layout()
+    pairs = sorted(pairs, key=lambda t: t[0])
+    xs = [p[0] for p in pairs]
+    ys = [p[1] for p in pairs]
+
+    fig, ax = plt.subplots(figsize=(10.2, 5.8))
+    ax.plot(xs, ys, marker="o", linewidth=1.8)
+    ax.set_xlabel("denominator q of periodic approximant")
+    ax.set_ylabel("Toeplitz condition number")
+
+    _apply_figure_header(
+        fig,
+        ax,
+        "Toeplitz condition number vs approximant denominator",
+        target_alpha,
+        observable_desc,
+        alpha_name=alpha_name,
+    )
 
     path = outdir / filename
-    fig.savefig(path, dpi=180, bbox_inches="tight")
+    fig.savefig(path, dpi=220)
     plt.close(fig)
     return str(path)
 
+
+def _plot_weak_moment_errors(rows, outdir, filename, target_alpha, observable_desc, alpha_name=None):
+    q_vals = []
+    series = {}
+
+    moment_keys = [k for k in rows[0].keys() if k.startswith("moment_") and k.endswith("_abs_error")]
+    moment_keys.sort()
+
+    for key in moment_keys:
+        series[key] = []
+
+    for row in rows:
+        q_vals.append(int(row["q"]))
+        for key in moment_keys:
+            series[key].append(float(row[key]))
+
+    fig, ax = plt.subplots(figsize=(10.6, 6.0))
+
+    for key in moment_keys:
+        ax.plot(q_vals, series[key], marker="o", label=_moment_pretty_name(key))
+
+    ax.set_xlabel("denominator q of periodic approximant")
+    ax.set_ylabel("absolute error")
+    ax.set_yscale("log")
+    ax.legend(loc="best", fontsize=10, frameon=True)
+
+    _apply_figure_header(
+        fig,
+        ax,
+        "Weak convergence via moment errors",
+        target_alpha,
+        observable_desc,
+        alpha_name=alpha_name,
+        extra_lines=[r"moments shown: $k=1,\dots,5$"],
+    )
+
+    path = outdir / filename
+    fig.savefig(path, dpi=220)
+    plt.close(fig)
+    return str(path)
+
+
+def _plot_weak_test_errors(rows, outdir, filename, target_alpha, observable_desc, alpha_name=None):
+    q_vals = []
+    series = {}
+
+    test_keys = [k for k in rows[0].keys() if k.startswith("test_") and k.endswith("_abs_error")]
+    test_keys.sort()
+
+    preferred = [k for k in test_keys if ("cos_" in k or "sin_" in k or "bump_atom_1" in k or "bump_pi" in k)]
+    chosen = preferred[:6] if preferred else test_keys[:6]
+
+    for key in chosen:
+        series[key] = []
+
+    for row in rows:
+        q_vals.append(int(row["q"]))
+        for key in chosen:
+            series[key].append(float(row[key]))
+
+    fig, ax = plt.subplots(figsize=(10.6, 5.9))
+
+    for key in chosen:
+        ax.plot(q_vals, series[key], marker="o", label=_test_function_pretty_name(key))
+
+    ax.set_xlabel("denominator q of periodic approximant")
+    ax.set_ylabel("absolute error")
+    ax.set_yscale("log")
+    ax.legend(loc="best", fontsize=10, frameon=True)
+
+    _apply_figure_header(
+        fig,
+        ax,
+        "Weak convergence via continuous test functions",
+        target_alpha,
+        observable_desc,
+        alpha_name=alpha_name,
+    )
+
+    path = outdir / filename
+    fig.savefig(path, dpi=220)
+    plt.close(fig)
+    return str(path)
+
+
+def _plot_smoothed_measure_overlay(
+    target_alpha,
+    approximants,
+    harmonics,
+    coefficients,
+    outdir,
+    filename,
+    observable_desc,
+    alpha_name=None,
+    sigma: float = 0.20,
+) -> str:
+    from methods.cd_kernel.core.weak_convergence import build_rotation_measure
+
+    angle_grid = np.linspace(0.0, 2.0 * np.pi, 1024, endpoint=False)
+
+    fig, ax = plt.subplots(figsize=(10.8, 6.0))
+
+    mu_target = build_rotation_measure(target_alpha, harmonics, coefficients)
+    y_target = smoothed_density_on_grid(mu_target, angle_grid, sigma=sigma)
+    ax.plot(angle_grid, y_target, linewidth=2.0, label="irrational target")
+
+    for p, q in approximants:
+        mu_n = build_rotation_measure(float(p) / float(q), harmonics, coefficients)
+        y_n = smoothed_density_on_grid(mu_n, angle_grid, sigma=sigma)
+        ax.plot(angle_grid, y_n, linewidth=1.3, label=f"approximant {p}/{q}")
+
+    ax.set_xlabel("angle on unit circle (radians)")
+    ax.set_ylabel("smoothed spectral mass")
+    ax.legend(loc="best", fontsize=10, frameon=True)
+
+    _apply_figure_header(
+        fig,
+        ax,
+        "Weak convergence view through smoothed spectral measures",
+        target_alpha,
+        observable_desc,
+        alpha_name=alpha_name,
+        extra_lines=[rf"smoothing parameter: $\sigma={sigma:.2f}$"],
+    )
+
+    path = outdir / filename
+    fig.savefig(path, dpi=220)
+    plt.close(fig)
+    return str(path)
+
+
+def _plot_collapse_metrics(rows, outdir, filename, target_alpha, observable_desc, alpha_name=None):
+    q_vals = [int(row["q"]) for row in rows]
+    entropy = [float(row["spectral_entropy"]) for row in rows]
+    eff_atoms = [float(row["effective_atom_count"]) for row in rows]
+    top1 = [float(row["top_1_mass"]) for row in rows]
+    ratio = [float(row["concentration_ratio"]) for row in rows]
+    num_atoms = [float(row["num_atoms"]) for row in rows]
+
+    fig, ax = plt.subplots(figsize=(10.4, 5.9))
+
+    ax.plot(q_vals, entropy, marker="o", label="entropy")
+    ax.plot(q_vals, eff_atoms, marker="s", label="effective atom count")
+    ax.plot(q_vals, top1, marker="^", label="largest atom mass")
+    ax.plot(q_vals, num_atoms, marker="d", label="number of atoms")
+
+    finite_q = [q for q, r in zip(q_vals, ratio) if np.isfinite(r)]
+    finite_r = [r for r in ratio if np.isfinite(r)]
+    if finite_q:
+        ax.plot(finite_q, finite_r, marker="x", label="largest / second-largest mass")
+
+    ax.set_xlabel("denominator q of periodic approximant")
+    ax.set_ylabel("metric value")
+    ax.legend(loc="best", fontsize=10, frameon=True)
+
+    _apply_figure_header(
+        fig,
+        ax,
+        "Spectral collapse diagnostics vs approximant denominator",
+        target_alpha,
+        observable_desc,
+        alpha_name=alpha_name,
+    )
+
+    path = outdir / filename
+    fig.savefig(path, dpi=220)
+    plt.close(fig)
+    return str(path)
+
+
+def _print_collapse_summary(rows):
+    print("\n=== Collapse diagnostics summary ===")
+    for row in rows:
+        q = row.get("q", "NA")
+        num_atoms = row.get("num_atoms", "NA")
+        collisions = row.get("collision_count", "NA")
+        entropy = row.get("spectral_entropy", float("nan"))
+        eff_atoms = row.get("effective_atom_count", float("nan"))
+        top1 = row.get("top_1_mass", float("nan"))
+        top2 = row.get("top_2_mass", float("nan"))
+        ratio = row.get("concentration_ratio", float("nan"))
+
+        print(
+            f"q={q:>3} | "
+            f"num_atoms={num_atoms} | "
+            f"collisions={collisions} | "
+            f"entropy={entropy:.6f} | "
+            f"effective_atoms={eff_atoms:.6f} | "
+            f"top1={top1:.6f} | "
+            f"top2={top2:.6f} | "
+            f"ratio={ratio}"
+        )
+
+
+# ---------------------------------------------------------------------
+# Main comparison driver
+# ---------------------------------------------------------------------
 
 def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
     outdir = Path(cfg.output_dir)
@@ -227,6 +554,10 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
         direct_cfg.make_plots = False
         direct_cfg.save_npz = True
         direct_result = execute_rotation_run(direct_cfg)
+
+        observable_desc = direct_result.observable.description
+        alpha_name = getattr(direct_cfg, "target_alpha_name", None)
+
         results.append(direct_result)
         rows.append(_summary_row(direct_result, label="direct", alpha_target=alpha_target))
 
@@ -250,7 +581,10 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                 results,
                 outdir,
                 "irrational_vs_approximants_atomic_overlay.png",
-                "Atomic proxy: direct irrational vs rational approximants",
+                "Atomic spectral proxy under periodic approximation",
+                target_alpha=alpha_target,
+                observable_desc=observable_desc,
+                alpha_name=alpha_name,
             )
             files["atomic_overlay"] = overlay_path
 
@@ -258,17 +592,16 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                 rows,
                 outdir,
                 "irrational_vs_approximants_condition_vs_denominator.png",
+                target_alpha=alpha_target,
+                observable_desc=observable_desc,
+                alpha_name=alpha_name,
             )
             if cond_path:
                 files["condition_vs_denominator"] = cond_path
 
-            # Weak-convergence diagnostics from the exact atomic measures
             weak = compare_rotation_measures_weakly(
                 target_alpha=alpha_target,
-                approximants=[(int(r["p"]), int(r["q"])) for r in [
-                    {"p": result.config.p, "q": result.config.q}
-                    for result in results[1:]  # skip direct irrational result
-                ]],
+                approximants=[(int(result.config.p), int(result.config.q)) for result in results[1:]],
                 harmonics=direct_result.observable.harmonics,
                 coefficients=direct_result.observable.coefficients,
                 max_moment_order=5,
@@ -276,17 +609,31 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
             )
 
             weak_rows = weak["rows"]
+            _print_collapse_summary(weak_rows)
 
             if cfg.save_csv:
                 weak_csv_path = outdir / "irrational_vs_approximants_weak_summary.csv"
                 _write_summary_csv(weak_csv_path, weak_rows)
                 files["weak_summary_csv"] = str(weak_csv_path)
 
-            if cfg.make_plots and weak_rows:
+            collapse_plot_path = _plot_collapse_metrics(
+                weak_rows,
+                outdir,
+                "irrational_vs_approximants_collapse_metrics.png",
+                target_alpha=alpha_target,
+                observable_desc=observable_desc,
+                alpha_name=alpha_name,
+            )
+            files["collapse_metrics"] = collapse_plot_path
+
+            if weak_rows:
                 weak_moment_path = _plot_weak_moment_errors(
                     weak_rows,
                     outdir,
                     "irrational_vs_approximants_weak_moment_errors.png",
+                    target_alpha=alpha_target,
+                    observable_desc=observable_desc,
+                    alpha_name=alpha_name,
                 )
                 files["weak_moment_errors"] = weak_moment_path
 
@@ -294,6 +641,9 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                     weak_rows,
                     outdir,
                     "irrational_vs_approximants_weak_test_errors.png",
+                    target_alpha=alpha_target,
+                    observable_desc=observable_desc,
+                    alpha_name=alpha_name,
                 )
                 files["weak_test_errors"] = weak_test_path
 
@@ -304,6 +654,8 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                     coefficients=direct_result.observable.coefficients,
                     outdir=outdir,
                     filename="irrational_vs_approximants_smoothed_overlay.png",
+                    observable_desc=observable_desc,
+                    alpha_name=alpha_name,
                     sigma=0.20,
                 )
                 files["smoothed_overlay"] = smoothed_overlay_path
@@ -335,6 +687,8 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                 outdir,
                 "observable_modes_atomic_overlay.png",
                 "Atomic proxy across observable modes",
+                target_alpha=None,
+                observable_desc=None,
             )
             files["atomic_overlay"] = overlay_path
 
@@ -369,6 +723,8 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
                 outdir,
                 "rational_family_atomic_overlay.png",
                 "Atomic proxy across rational rotation family",
+                target_alpha=None,
+                observable_desc=None,
             )
             files["atomic_overlay"] = overlay_path
 
@@ -384,113 +740,9 @@ def run_rotation_comparison(cfg: RotationComparisonConfig) -> dict[str, Any]:
 
     raise ValueError(f"Unsupported compare_mode={cfg.compare_mode!r}")
 
-def _plot_weak_moment_errors(rows: list[dict[str, Any]], outdir: Path, filename: str) -> str:
-    q_vals = []
-    series: dict[str, list[float]] = {}
-
-    moment_keys = [k for k in rows[0].keys() if k.startswith("moment_") and k.endswith("_abs_error")]
-    moment_keys.sort()
-
-    for key in moment_keys:
-        series[key] = []
-
-    for row in rows:
-        q_vals.append(int(row["q"]))
-        for key in moment_keys:
-            series[key].append(float(row[key]))
-
-    fig = plt.figure(figsize=(9, 5))
-    ax = fig.add_subplot(111)
-    for key in moment_keys:
-        ax.plot(q_vals, series[key], marker="o", label=key)
-    ax.set_xlabel("denominator q")
-    ax.set_ylabel("absolute error")
-    ax.set_title("Weak convergence via moment errors")
-    ax.set_yscale("log")
-    ax.legend(loc="best", fontsize=8)
-    fig.tight_layout()
-
-    path = outdir / filename
-    fig.savefig(path, dpi=180, bbox_inches="tight")
-    plt.close(fig)
-    return str(path)
-
-
-def _plot_weak_test_errors(rows: list[dict[str, Any]], outdir: Path, filename: str) -> str:
-    q_vals = []
-    series: dict[str, list[float]] = {}
-
-    test_keys = [k for k in rows[0].keys() if k.startswith("test_") and k.endswith("_abs_error")]
-    test_keys.sort()
-
-    # Keep the plot readable on first pass
-    preferred = [k for k in test_keys if ("cos_" in k or "sin_" in k or "bump_atom_1" in k or "bump_pi" in k)]
-    chosen = preferred[:6] if preferred else test_keys[:6]
-
-    for key in chosen:
-        series[key] = []
-
-    for row in rows:
-        q_vals.append(int(row["q"]))
-        for key in chosen:
-            series[key].append(float(row[key]))
-
-    fig = plt.figure(figsize=(9, 5))
-    ax = fig.add_subplot(111)
-    for key in chosen:
-        ax.plot(q_vals, series[key], marker="o", label=key)
-    ax.set_xlabel("denominator q")
-    ax.set_ylabel("absolute error")
-    ax.set_title("Weak convergence via continuous test functions")
-    ax.set_yscale("log")
-    ax.legend(loc="best", fontsize=8)
-    fig.tight_layout()
-
-    path = outdir / filename
-    fig.savefig(path, dpi=180, bbox_inches="tight")
-    plt.close(fig)
-    return str(path)
-
-
-def _plot_smoothed_measure_overlay(
-    target_alpha: float,
-    approximants: list[tuple[int, int]],
-    harmonics: np.ndarray,
-    coefficients: np.ndarray,
-    outdir: Path,
-    filename: str,
-    sigma: float = 0.20,
-) -> str:
-    from methods.cd_kernel.core.weak_convergence import build_rotation_measure
-
-    angle_grid = np.linspace(0.0, 2.0 * np.pi, 1024, endpoint=False)
-
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_subplot(111)
-
-    mu_target = build_rotation_measure(target_alpha, harmonics, coefficients)
-    y_target = smoothed_density_on_grid(mu_target, angle_grid, sigma=sigma)
-    ax.plot(angle_grid, y_target, linewidth=2.0, label="target irrational")
-
-    for p, q in approximants:
-        mu_n = build_rotation_measure(float(p) / float(q), harmonics, coefficients)
-        y_n = smoothed_density_on_grid(mu_n, angle_grid, sigma=sigma)
-        ax.plot(angle_grid, y_n, linewidth=1.2, label=f"{p}/{q}")
-
-    ax.set_xlabel("angle")
-    ax.set_ylabel("smoothed mass profile")
-    ax.set_title("Weak convergence view: smoothed spectral measures")
-    ax.legend(loc="best", fontsize=8)
-    fig.tight_layout()
-
-    path = outdir / filename
-    fig.savefig(path, dpi=180, bbox_inches="tight")
-    plt.close(fig)
-    return str(path)
-
 
 # ---------------------------------------------------------------------
-# First-pass default config
+# Default config
 # ---------------------------------------------------------------------
 
 BASE_CONFIG = RotationRunConfig(
